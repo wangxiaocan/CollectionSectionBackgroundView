@@ -1,10 +1,11 @@
 //
-//  NotifyCenterComponentsFlowLayout.h
-//  MineModule
+//  XCSectionBackgroundViewFlowLayout.h
+//  XCProject
 //
-//  Created by can on 2020/5/22.
-//  Copyright © 2020 UIOT-xiaocan. All rights reserved.
+//  Created by can on 2019/5/22.
+//  Copyright © 2019 xiaocan. All rights reserved.
 //
+
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
