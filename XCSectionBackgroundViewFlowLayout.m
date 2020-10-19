@@ -1,21 +1,22 @@
 //
-//  XCSectionBackgroundViewFlowLayout.m
-//  XCProject
+//  NotifyCenterComponentsFlowLayout.m
+//  MineModule
 //
-//  Created by can on 2019/5/22.
-//  Copyright © 2019 xiaocan. All rights reserved.
+//  Created by can on 2020/5/22.
+//  Copyright © 2020 UIOT-xiaocan. All rights reserved.
 //
 
-#import "XCSectionBackgroundViewFlowLayout.h"
+#import "ZGSectionBackgroundViewFlowLayout.h"
 
 
-@interface XCSectionBackgroundView()
+@interface ZGSectionBackgroundView()
 
 @property (nonatomic, assign) NSInteger section;
 @property (nonatomic, copy)   NSString  *identifier;
 
+
 @end
-@implementation XCSectionBackgroundView
+@implementation ZGSectionBackgroundView
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -30,12 +31,14 @@
 
 
 
-@interface UICollectionView (XCSectionBackgroundViewIdentifier)
+@interface UICollectionView (ZGSectionBackgroundViewIdentifier)
 
 @property (nonatomic, strong) NSMutableDictionary   *sectionBackgroudViewDic;
 
+
+
 @end
-@implementation UICollectionView (XCSectionBackgroundViewIdentifier)
+@implementation UICollectionView (ZGSectionBackgroundViewIdentifier)
 
 - (NSMutableDictionary *)sectionBackgroudViewDic{
     NSMutableDictionary *dic = objc_getAssociatedObject(self, @selector(setSectionBackgroudViewDic:));
@@ -50,15 +53,18 @@
     objc_setAssociatedObject(self, _cmd, sectionBackgroudViewDic, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (void)removeSectionView:(XCSectionBackgroundView *)view{
+- (void)removeSectionView:(ZGSectionBackgroundView *)view{
     if (view.identifier) {
         NSArray *sectionArr = self.sectionBackgroudViewDic[view.identifier];
         NSMutableArray *visibleArr = sectionArr[0];
         NSMutableArray *layIdleArr = sectionArr[1];
+        view.section = -1;
         if ([visibleArr containsObject:view]) {
             [visibleArr removeObject:view];
         }
-        [layIdleArr addObject:view];
+        if (![layIdleArr containsObject:view]) {
+            [layIdleArr addObject:view];
+        }
     }
 }
 
@@ -74,17 +80,19 @@
 
 
 
-@interface XCSectionBackgroundViewFlowLayout()
+@interface ZGSectionBackgroundViewFlowLayout()
 
-@property (nonatomic, weak, nullable) id<UICollectionViewDelegateFlowLayout, XCSectionBackgroundViewFlowLayoutDelegate> ncfDelegate;
+@property (nonatomic, weak, nullable) id<UICollectionViewDelegateFlowLayout, ZGSectionBackgroundViewFlowLayoutDelegate> ncfDelegate;
 
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSString *>   *sectionFrameDic;
 
 @property (nonatomic, assign) BOOL                  hasAddObserver;
 
+@property (nonatomic, strong) NSLock                *sectionViewLayoutLock;
+
 @end
 
-@implementation XCSectionBackgroundViewFlowLayout
+@implementation ZGSectionBackgroundViewFlowLayout
 
 - (NSMutableDictionary<NSNumber *, NSString *> *)sectionFrameDic{
     if (!_sectionFrameDic) {
@@ -93,9 +101,16 @@
     return _sectionFrameDic;
 }
 
+- (NSLock *)sectionViewLayoutLock{
+    if (!_sectionViewLayoutLock) {
+        _sectionViewLayoutLock = [[NSLock alloc] init];
+    }
+    return _sectionViewLayoutLock;
+}
+
 - (void)prepareLayout{
     [super prepareLayout];
-    self.ncfDelegate = (id<UICollectionViewDelegateFlowLayout, XCSectionBackgroundViewFlowLayoutDelegate>)(self.collectionView.dataSource);
+    self.ncfDelegate = (id<UICollectionViewDelegateFlowLayout, ZGSectionBackgroundViewFlowLayoutDelegate>)(self.collectionView.dataSource);
     NSArray *subViews = [self.collectionView subviews];
     for (UIView *view in subViews) {
         if ([view isKindOfClass:[ZGSectionBackgroundView class]]) {
@@ -207,12 +222,12 @@
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context{
-    
+    [self.sectionViewLayoutLock lock];
     if (self.sectionFrameDic.count > 0
         && [self.ncfDelegate respondsToSelector:@selector(collectionView:layout:sectionItemsBackgroundViewAtSection:)]) {
         CGPoint offset = self.collectionView.contentOffset;
         
-        CGRect visibleFrame = CGRectMake(0, offset.y, CGRectGetWidth(self.collectionView.frame), CGRectGetHeight(self.collectionView.frame));
+        CGRect visibleFrame = CGRectMake(0, (offset.y >= 0) ? offset.y : 0, CGRectGetWidth(self.collectionView.frame), CGRectGetHeight(self.collectionView.frame));
         
         NSMutableDictionary *visibleFrames = [NSMutableDictionary dictionaryWithCapacity:0];
         
@@ -235,17 +250,19 @@
                 }
             }
         }
-        
+                
         //移除超出可见视图的sectionBackgroundView，添加进入到可见视图内的sectionBackgroundView
         NSArray *sectionViews = [self.collectionView subviews];
         for (ZGSectionBackgroundView *view in sectionViews) {
             if ([view isKindOfClass:[ZGSectionBackgroundView class]]) {
-                
                 //判断view frame是否有效
                 BOOL isVisibleFrame = NO;
                 if (!CGRectEqualToRect(view.frame, CGRectZero)
                 && CGRectIntersectsRect(view.frame, visibleFrame)) {
                     isVisibleFrame = YES;
+                }
+                if (![self.sectionFrameDic.allKeys containsObject:@(view.section)]) {
+                    isVisibleFrame = NO;
                 }
                 //水平滚动
                 if (self.scrollDirection == UICollectionViewScrollDirectionHorizontal
@@ -253,15 +270,17 @@
                     isVisibleFrame = NO;
                 }
                 //垂直滚动
-                if (self.scrollDirection == UICollectionViewScrollDirectionVertical
+                else if (self.scrollDirection == UICollectionViewScrollDirectionVertical
                     && CGRectGetHeight(view.frame) < 0.5) {
                     isVisibleFrame = NO;
                 }
                 if (isVisibleFrame) {
+                    view.frame = CGRectFromString([self.sectionFrameDic objectForKey:@(view.section)]);
                     [visibleFrames removeObjectForKey:@(view.section)];
                 }
                 else{//移除,移动到重用队列
                     [view removeFromSuperview];
+                    view.section = -1;
                     [self.collectionView removeSectionView:view];
                 }
             }
@@ -285,8 +304,10 @@
                 ZGSectionBackgroundView *sectionView = [self.ncfDelegate collectionView:self.collectionView layout:self sectionItemsBackgroundViewAtSection:[section integerValue]];
                 sectionView.section = [section integerValue];
                 if (sectionView
-                    && [sectionView isKindOfClass:[XCSectionBackgroundView class]]) {
-                    sectionView.frame = CGRectFromString(visibleFrames[section]);
+                    && [sectionView isKindOfClass:[ZGSectionBackgroundView class]]
+                    && CGRectGetWidth(frame) >= 0.5
+                    && CGRectGetHeight(frame) >= 0.5) {
+                    sectionView.frame = frame;
                     sectionView.layer.zPosition = -1000;
                     sectionView.userInteractionEnabled = NO;
                     [self.collectionView addSubview:sectionView];
@@ -294,7 +315,15 @@
             }
         }
     }
-    
+    else {
+        NSArray *allViews = [self.collectionView subviews];
+        for (ZGSectionBackgroundView *sectionView in allViews) {
+            if ([sectionView isKindOfClass:ZGSectionBackgroundView.class]) {
+                [self.collectionView removeSectionView:sectionView];
+            }
+        }
+    }
+    [self.sectionViewLayoutLock unlock];
 }
 
 
@@ -317,7 +346,7 @@
 
 
 //UICollectioView 添加注册机制
-@implementation UICollectionView (XCSectionBackgroundView)
+@implementation UICollectionView (ZGSectionBackgroundView)
 
 - (void)registerSectionBackgroundViewClass:(nullable Class)viewClass withReuseIdentifier:(NSString *)identifier{
     if (!viewClass) {
@@ -329,29 +358,39 @@
     [self.sectionBackgroudViewDic setObject:@[visibleArr, layIdleArr, viewClass ? viewClass : ZGSectionBackgroundView.class] forKey:identifier];
 }
 
-- (__kindof XCSectionBackgroundView *)dequeueReusableSectionBackgroundViewWithReuseIdentifier:(NSString *)identifier forSection:(NSInteger)section{
+- (__kindof ZGSectionBackgroundView *)dequeueReusableSectionBackgroundViewWithReuseIdentifier:(NSString *)identifier forSection:(NSInteger)section{
     NSArray *sectionArr = self.sectionBackgroudViewDic[identifier];
     NSMutableArray *visibleArr = sectionArr[0];
     NSMutableArray *layIdleArr = sectionArr[1];
     Class viewClass = sectionArr[2];
     
-    XCSectionBackgroundView *view = nil;
-    if (layIdleArr.count > 0) {
-        view = [layIdleArr firstObject];
-        view.identifier = identifier;
-        view.section = section;
-        [layIdleArr removeObject:view];
-        [visibleArr addObject:view];
+    ZGSectionBackgroundView *view = nil;
+    for (ZGSectionBackgroundView *sectionView in visibleArr) {
+        if (sectionView.section == section) {
+            view = sectionView;
+            if ([layIdleArr containsObject:sectionView]) {
+                [layIdleArr removeObject:sectionView];
+            }
+            break;
+        }
     }
-    else{
-        view = [viewClass new];
-        view.identifier = identifier;
-        view.section = section;
-        [visibleArr addObject:view];
+    if (!view) {
+        if (layIdleArr.count > 0) {
+            view = [layIdleArr firstObject];
+            view.identifier = identifier;
+            view.section = section;
+            [layIdleArr removeObject:view];
+            [visibleArr addObject:view];
+        }
+        else{
+            view = [viewClass new];
+            view.identifier = identifier;
+            view.section = section;
+            [visibleArr addObject:view];
+        }
     }
     return view;
 }
-
 
 @end
 
