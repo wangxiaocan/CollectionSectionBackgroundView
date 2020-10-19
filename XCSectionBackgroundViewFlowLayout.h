@@ -1,20 +1,19 @@
 //
-//  XCSectionBackgroundViewFlowLayout.h
-//  XCProject
+//  NotifyCenterComponentsFlowLayout.h
+//  MineModule
 //
 //  Created by can on 2019/5/22.
-//  Copyright © 2019 xiaocan. All rights reserved.
+//  Copyright © 2020 xiaocan. All rights reserved.
 //
-
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class XCSectionBackgroundView;
+@class ZGSectionBackgroundView;
 
-@protocol XCSectionBackgroundViewFlowLayoutDelegate <NSObject>
+@protocol ZGSectionBackgroundViewFlowLayoutDelegate <NSObject>
 
 
 @optional
@@ -22,14 +21,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (UIEdgeInsets)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout forSectionItemsBackgroundInsetsAtSection:(NSInteger)section;
 
 //返回背景，返回nil表示不设背景
-- (__kindof XCSectionBackgroundView *_Nullable)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sectionItemsBackgroundViewAtSection:(NSInteger)section;
+- (__kindof ZGSectionBackgroundView *_Nullable)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sectionItemsBackgroundViewAtSection:(NSInteger)section;
 
 @end
 
 /**
  * UICollectionView 给每个区添加背景view Layout
  */
-@interface XCSectionBackgroundViewFlowLayout : UICollectionViewFlowLayout
+@interface ZGSectionBackgroundViewFlowLayout : UICollectionViewFlowLayout
 
 @property (nonatomic, assign) UIEdgeInsets  sectionBackgroundViewInsets;
 
@@ -37,7 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 
-@interface UICollectionView (XCSectionBackgroundView)
+@interface UICollectionView (ZGSectionBackgroundView)
 
 /**
  * 注册sectionBackgroundView， viewClass必须是 ZGSectionBackgroundView.class 类型
@@ -47,12 +46,12 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * 从注册队列获取 ZGSectionBackgroundView
  */
-- (__kindof XCSectionBackgroundView *)dequeueReusableSectionBackgroundViewWithReuseIdentifier:(NSString *)identifier forSection:(NSInteger)section;
+- (__kindof ZGSectionBackgroundView *)dequeueReusableSectionBackgroundViewWithReuseIdentifier:(NSString *)identifier forSection:(NSInteger)section;
 
 
 @end
 
-@interface XCSectionBackgroundView : UIView
+@interface ZGSectionBackgroundView : UIView
 
 @end
 
