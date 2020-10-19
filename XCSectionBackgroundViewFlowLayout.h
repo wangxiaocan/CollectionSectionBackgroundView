@@ -3,7 +3,7 @@
 //  MineModule
 //
 //  Created by can on 2019/5/22.
-//  Copyright © 2020 xiaocan. All rights reserved.
+//  Copyright © 2019 xiaocan. All rights reserved.
 //
 
 #import <UIKit/UIKit.h>
